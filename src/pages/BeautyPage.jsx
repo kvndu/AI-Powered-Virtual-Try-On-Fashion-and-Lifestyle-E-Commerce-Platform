@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ProductDetailPage from './ProductDetailPage';
+import { useCart } from '../context/CartContext';
 
 /* ─── Constants ───────────────────────────────────────────────── */
 const CATEGORY_GROUPS = {
@@ -71,6 +72,7 @@ const fmt = (n) => parseInt(n).toLocaleString('en-LK');
 
 /* ═══════════════════════════════════════════════════════════════ */
 export default function BeautyPage() {
+  const { addItem } = useCart();
   const [products,          setProducts]          = useState([]);
   const [loading,           setLoading]           = useState(true);
   const [selectedCategory,  setSelectedCategory]  = useState({ group: null, sub: null, level: 0 });
@@ -223,8 +225,22 @@ export default function BeautyPage() {
     search.trim().length > 0,
   ].filter(Boolean).length;
 
-  const handleAddToCart = (id, e) => {
-    e.stopPropagation();
+  const handleAddToCart = (id, e, size = 'One Size', color = 'Default', quantity = 1) => {
+    e?.stopPropagation();
+    const product = products.find(p => p.id === id);
+    if (product) {
+      addItem({
+        id: product.id,
+        product_id: product.id,
+        name: product.name,
+        price: product.price_lkr,
+        price_lkr: product.price_lkr,
+        image: product.images_array?.[0] || '',
+        size,
+        color,
+        quantity
+      });
+    }
     setAddedToCart(p => ({ ...p, [id]: true }));
     setTimeout(() => setAddedToCart(p => ({ ...p, [id]: false })), 1800);
   };

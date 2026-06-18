@@ -15,7 +15,12 @@ export default function ProductCard({ product }) {
 
   const handleAddToCart = (e) => {
     e.preventDefault();
-    addItem(product, 1, null);
+    addItem({
+      ...product,
+      size: 'M',
+      color: 'Black',
+      quantity: 1
+    });
     toast.success(`Added to bag!`, {
       style: {
         background: '#000',

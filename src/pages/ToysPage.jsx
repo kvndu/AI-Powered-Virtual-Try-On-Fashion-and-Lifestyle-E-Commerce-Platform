@@ -178,18 +178,21 @@ export default function ToysPage() {
     search.trim().length > 0,
   ].filter(Boolean).length;
 
-  const handleAddToCart = (id, e) => {
+  const handleAddToCart = (id, e, size = 'One Size', color = 'Default', quantity = 1) => {
     e?.stopPropagation();
     const product = products.find(p => p.id === id);
     if (!product) return;
     
     addItem({
       id: product.id,
+      product_id: product.id,
       name: product.name,
       price: product.price_lkr,
       price_lkr: product.price_lkr,
-      images_array: product.images_array,
-      subcategory: product.subcategory
+      image: product.images_array?.[0] || '',
+      size,
+      color,
+      quantity
     });
 
     setAddedToCart(p => ({ ...p, [id]: true }));

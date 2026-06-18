@@ -25,6 +25,12 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    const handleOpenCart = () => setCartOpen(true);
+    window.addEventListener('open-cart', handleOpenCart);
+    return () => window.removeEventListener('open-cart', handleOpenCart);
+  }, []);
+
+  useEffect(() => {
     setMobileOpen(false);
     setUserMenuOpen(false);
     setSearchOpen(false);

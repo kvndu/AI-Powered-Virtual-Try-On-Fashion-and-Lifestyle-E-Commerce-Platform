@@ -204,7 +204,7 @@ export default function ProductDetailPage({
 
   const handleAddToCartWithValidation = (e) => {
     if (!selectedSize) { showToast('⚠ Please select a size first!'); return; }
-    onAddToCart(p.id, e);
+    onAddToCart(p.id, e, selectedSize, selectedColor || 'Default', qty);
     showToast('✓ Added to bag!');
   };
 
