@@ -232,6 +232,15 @@ export default function Navbar() {
               </Link>
             )}
 
+            {/* Profile Icon */}
+            <Link
+              to="/profile"
+              style={{ color: '#ffffff', display: 'flex', alignItems: 'center', padding: 4, opacity: 0.9 }}
+              title="Profile"
+            >
+              <User size={18} />
+            </Link>
+
             {/* User Dropdown Button / Capsule Style Sign In */}
             {user ? (
               <div style={{ position: 'relative' }}>

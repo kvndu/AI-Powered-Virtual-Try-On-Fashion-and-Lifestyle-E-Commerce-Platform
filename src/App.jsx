@@ -21,6 +21,7 @@ import OffersPage from './pages/OfferPage';
 import BeautyPage from './pages/BeautyPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import ProfilePage from './pages/ProfilePage';
 
 
 // 💡 DYNAMIC ROUTER CONTROLLER:
@@ -87,6 +88,7 @@ function App() {
                 <Route path="/offers" element={<OffersPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
 
                 {/* Catch-all fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />
