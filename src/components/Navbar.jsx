@@ -49,6 +49,7 @@ export default function Navbar() {
     { to: '/', label: 'HOME' },
     { to: '/products?category=women', label: 'WOMEN' },
     { to: '/products?category=men', label: 'MEN' },
+    { to: '/products?category=beauty', label: 'BEAUTY' },
     { to: '/products?category=kids', label: 'KIDS' },
     { to: '/products?category=accessories', label: 'ACCESSORIES' },
     { to: '/products?category=toys', label: 'TOYS' },
