@@ -19,7 +19,8 @@ import HomewarePage from './pages/HomewarePage';
 import KidsPage from './pages/KidsPage';
 import OffersPage from './pages/OfferPage';
 import BeautyPage from './pages/BeautyPage';
-
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
 
 
 // 💡 DYNAMIC ROUTER CONTROLLER:
@@ -84,7 +85,8 @@ function App() {
                 <Route path="/homeware" element={<HomewarePage />} />
                 <Route path="/gift-cards" element={<GiftCardPage />} />
                 <Route path="/offers" element={<OffersPage />} />
-                
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
 
                 {/* Catch-all fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />
