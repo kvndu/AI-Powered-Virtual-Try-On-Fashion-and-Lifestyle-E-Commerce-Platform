@@ -57,7 +57,20 @@ export function CartProvider({ children }) {
     localStorage.setItem('cart', JSON.stringify(state.items));
   }, [state.items]);
 
-  const addItem = (item) => dispatch({ type: 'ADD_ITEM', payload: item });
+  const addItem = (item) => {
+    // Format the item to ensure it has all required properties for fashion & toys
+    const formatted = {
+      product_id: item.product_id || item.id,
+      name: item.name,
+      price: item.price_lkr || item.price,
+      image: item.image || item.images_array?.[0] || '',
+      size: item.size || 'M',
+      color: item.color || 'Black',
+      quantity: item.quantity || 1
+    };
+    dispatch({ type: 'ADD_ITEM', payload: formatted });
+    window.dispatchEvent(new CustomEvent('open-cart'));
+  };
   const removeItem = (id) => dispatch({ type: 'REMOVE_ITEM', payload: id });
   const updateQty = (id, quantity) => {
     if (quantity <= 0) removeItem(id);
