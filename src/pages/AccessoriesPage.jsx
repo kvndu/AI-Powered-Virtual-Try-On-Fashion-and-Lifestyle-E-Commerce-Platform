@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ChevronDown, ChevronUp, ShoppingBag, Heart,
-  SlidersHorizontal, X, Search, Grid3X3, LayoutList,
-  Star, Zap
+  SlidersHorizontal, X, Search, Grid3X3, LayoutList
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import photo2 from '../assets/photo2.jpeg';
@@ -13,104 +12,63 @@ const ACCESSORIES_TREE = [
     name: "Women's Accessories",
     gender: "Women",
     children: [
-      {
-        name: 'Bags',
-        children: ['Handbags', 'Tote Bags', 'Crossbody Bags', 'Shoulder Bags', 'Clutches', 'Mini Bags', 'Backpacks']
-      },
-      {
-        name: 'Wallets',
-        children: ['Card Holders']
-      },
-      {
-        name: 'Belts',
-        children: ['Casual Belts', 'Leather Belts', 'Waist Belts', 'Chain Belts', 'Fashion Belts']
-      },
-      {
-        name: 'Watches',
-        children: ['Analog Watches', 'Digital Watches', 'Smart Watches', 'Luxury Watches']
-      },
-      {
-        name: 'Sunglasses & Eyewear',
-        children: ['Sunglasses', 'Fashion Glasses', 'Blue-Light Glasses', 'Reading Glasses']
-      },
-      {
-        name: 'Hats & Caps',
-        children: ['Baseball Caps', 'Bucket Hats', 'Sun Hats', 'Straw Hats', 'Beanies']
-      },
-      {
-        name: 'Hair Accessories',
-        children: ['Hair Clips', 'Hair Bands', 'Headbands', 'Scrunchies', 'Hair Pins', 'Hair Bows']
-      },
-      {
-        name: 'Scarves & Shawls',
-        children: ['Scarves', 'Shawls', 'Wraps', 'Stoles']
-      },
-      {
-        name: 'Gloves',
-        children: ['Winter Gloves', 'Fashion Gloves', 'Leather Gloves']
-      },
-      {
-        name: 'Jewelry',
-        children: ['Necklaces', 'Earrings', 'Rings', 'Bracelets', 'Anklets', 'Pendants', 'Jewelry Sets', 'Brooches']
-      }
+      { name: 'Bags' },
+      { name: 'Wallets' },
+      { name: 'Belts' },
+      { name: 'Watches' },
+      { name: 'Sunglasses & Eyewear' },
+      { name: 'Hats & Caps' },
+      { name: 'Hair Accessories' },
+      { name: 'Scarves & Shawls' },
+      { name: 'Gloves' },
+      { name: 'Jewelry' }
     ]
   },
   {
     name: "Men's Accessories",
     gender: "Men",
     children: [
-      {
-        name: 'Bags',
-        children: ['Backpacks', 'Messenger Bags', 'Briefcases', 'Duffel Bags', 'Sling Bags']
-      },
-      {
-        name: 'Wallets',
-        children: ['Card Holders']
-      },
-      {
-        name: 'Belts',
-        children: ['Formal Belts', 'Casual Belts', 'Leather Belts', 'Reversible Belts']
-      },
-      {
-        name: 'Watches',
-        children: ['Analog Watches', 'Digital Watches', 'Smart Watches', 'Luxury Watches']
-      },
-      {
-        name: 'Sunglasses & Eyewear',
-        children: ['Sunglasses', 'Blue-Light Glasses', 'Reading Glasses']
-      },
-      {
-        name: 'Hats & Caps',
-        children: ['Baseball Caps', 'Bucket Hats', 'Beanies', 'Snapback Caps']
-      },
-      {
-        name: 'Ties & Formal Accessories',
-        children: ['Ties', 'Bow Ties', 'Pocket Squares', 'Tie Clips', 'Cufflinks']
-      },
-      {
-        name: 'Scarves & Gloves',
-        children: ['Scarves', 'Winter Scarves', 'Gloves', 'Leather Gloves']
-      },
-      {
-        name: 'Jewelry',
-        children: ['Chains', 'Necklaces', 'Bracelets', 'Rings', 'Pendants', 'Earrings']
-      },
-      {
-        name: 'Small Accessories',
-        children: ['Keychains', 'Lapel Pins', 'Money Clips', 'Card Holders']
-      }
+      { name: 'Bags' },
+      { name: 'Wallets' },
+      { name: 'Belts' },
+      { name: 'Watches' },
+      { name: 'Sunglasses & Eyewear' },
+      { name: 'Hats & Caps' },
+      { name: 'Ties & Formal Accessories' },
+      { name: 'Scarves & Gloves' },
+      { name: 'Jewelry' },
+      { name: 'Small Accessories' }
     ]
   }
 ];
+
+// Internal mapping of main categories to subcategories for data filtering
+const ACCESSORIES_MAPPING = {
+  'Bags': ['Handbags', 'Tote Bags', 'Crossbody Bags', 'Shoulder Bags', 'Clutches', 'Mini Bags', 'Backpacks'],
+  'Wallets': ['Card Holders'],
+  'Belts': ['Casual Belts', 'Leather Belts', 'Waist Belts', 'Chain Belts', 'Fashion Belts', 'Formal Belts', 'Reversible Belts'],
+  'Watches': ['Analog Watches', 'Digital Watches', 'Smart Watches', 'Luxury Watches'],
+  'Sunglasses & Eyewear': ['Sunglasses', 'Fashion Glasses', 'Blue-Light Glasses', 'Reading Glasses'],
+  'Hats & Caps': ['Baseball Caps', 'Bucket Hats', 'Sun Hats', 'Straw Hats', 'Beanies', 'Snapback Caps'],
+  'Hair Accessories': ['Hair Clips', 'Hair Bands', 'Headbands', 'Scrunchies', 'Hair Pins', 'Hair Bows'],
+  'Scarves & Shawls': ['Scarves', 'Shawls', 'Wraps', 'Stoles'],
+  'Gloves': ['Winter Gloves', 'Fashion Gloves', 'Leather Gloves'],
+  'Jewelry': ['Necklaces', 'Earrings', 'Rings', 'Bracelets', 'Anklets', 'Pendants', 'Jewelry Sets', 'Brooches', 'Chains'],
+  'Ties & Formal Accessories': ['Ties', 'Bow Ties', 'Pocket Squares', 'Tie Clips', 'Cufflinks'],
+  'Scarves & Gloves': ['Scarves', 'Winter Scarves', 'Gloves', 'Leather Gloves'],
+  'Small Accessories': ['Keychains', 'Lapel Pins', 'Money Clips', 'Card Holders']
+};
 
 // Helper to list all possible subcategories for the accessories filter
 const ALL_ACCESSORIES_SUBCATS = new Set();
 ACCESSORIES_TREE.forEach(genderNode => {
   genderNode.children.forEach(parentNode => {
     ALL_ACCESSORIES_SUBCATS.add(parentNode.name.toLowerCase());
-    parentNode.children.forEach(sub => {
-      ALL_ACCESSORIES_SUBCATS.add(sub.toLowerCase());
-    });
+  });
+});
+Object.values(ACCESSORIES_MAPPING).forEach(subs => {
+  subs.forEach(sub => {
+    ALL_ACCESSORIES_SUBCATS.add(sub.toLowerCase());
   });
 });
 
@@ -119,7 +77,8 @@ const getSubcategoriesForParent = (gender, parentName) => {
   if (!genderNode) return new Set();
   const parentNode = genderNode.children.find(c => c.name === parentName);
   if (!parentNode) return new Set();
-  return new Set(parentNode.children.map(s => s.toLowerCase()));
+  const subs = ACCESSORIES_MAPPING[parentName] || [];
+  return new Set(subs.map(s => s.toLowerCase()));
 };
 
 const getAllSubcategoriesForGender = (gender) => {
@@ -128,7 +87,8 @@ const getAllSubcategoriesForGender = (gender) => {
   const set = new Set();
   genderNode.children.forEach(parent => {
     set.add(parent.name.toLowerCase());
-    parent.children.forEach(sub => {
+    const subs = ACCESSORIES_MAPPING[parent.name] || [];
+    subs.forEach(sub => {
       set.add(sub.toLowerCase());
     });
   });
@@ -220,7 +180,6 @@ export default function AccessoriesPage() {
   }, []);
 
   /* derived values */
-  const minProductPrice = useMemo(() => Math.min(...products.map(p=>p.price_lkr), 0), [products]);
   const maxProductPrice = useMemo(() => Math.max(...products.map(p=>p.price_lkr), 10000), [products]);
 
   const filteredProducts = useMemo(() => {
@@ -324,14 +283,10 @@ export default function AccessoriesPage() {
 
       const filteredChildren = genderNode.children.map(parentNode => {
         const parentMatches = parentNode.name.toLowerCase().includes(query);
-        const filteredSubs = parentNode.children.filter(sub => 
-          sub.toLowerCase().includes(query)
-        );
 
-        if (parentMatches || filteredSubs.length > 0 || genderMatches) {
+        if (parentMatches || genderMatches) {
           return {
-            ...parentNode,
-            children: (parentMatches || genderMatches) ? parentNode.children : filteredSubs
+            ...parentNode
           };
         }
         return null;
@@ -596,7 +551,7 @@ export default function AccessoriesPage() {
         left: side === 'right' ? rect.right + 12 : rect.left - popW - 12,
         side,
       });
-    }, []);
+    }, [cardRef]);
 
     return (
       <div
