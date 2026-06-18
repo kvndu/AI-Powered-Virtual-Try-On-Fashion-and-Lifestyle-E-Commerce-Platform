@@ -17,6 +17,7 @@ import GiftCardPage from './pages/GiftCardPage';
 import ToysPage from './pages/ToysPage';
 import HomewarePage from './pages/HomewarePage';
 import KidsPage from './pages/KidsPage';
+import OfferPage from './pages/OfferPage';
 
 // Placeholders for remaining sections
 const OffersPage = () => <div style={{ padding: '100px 40px', textTransform: 'uppercase', fontWeight: 700 }}>Exclusive Offers Coming Soon</div>;
@@ -78,7 +79,7 @@ function App() {
                 <Route path="/accessories" element={<AccessoriesPage />} />
                 <Route path="/homeware" element={<HomewarePage />} />
                 <Route path="/gift-cards" element={<GiftCardPage />} />
-                <Route path="/offers" element={<OffersPage />} />
+                <Route path="/offer" element={<OfferPage />} />
                 
 
                 {/* Catch-all fallback */}
