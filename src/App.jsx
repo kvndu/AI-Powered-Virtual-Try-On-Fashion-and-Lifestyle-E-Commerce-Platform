@@ -18,6 +18,7 @@ import ToysPage from './pages/ToysPage';
 import HomewarePage from './pages/HomewarePage';
 import KidsPage from './pages/KidsPage';
 import OffersPage from './pages/OfferPage';
+import BeautyPage from './pages/BeautyPage';
 
 
 
@@ -41,6 +42,9 @@ function ProductRouteController() {
   }
   if (category === 'kids') {
     return <KidsPage />;
+  }
+  if (category === 'beauty') {
+    return <BeautyPage />;
   }
 
   return <WomenPage />;
@@ -70,6 +74,7 @@ function App() {
                 <Route path="/men"   element={<MenPage />} />
                 <Route path="/kids"  element={<KidsPage />} />
                 <Route path="/toys"  element={<ToysPage />} />
+                <Route path="/beauty" element={<BeautyPage />} />
 
                 {/* Product detail page */}
                 <Route path="/product/:id" element={<ProductDetailPage />} />
