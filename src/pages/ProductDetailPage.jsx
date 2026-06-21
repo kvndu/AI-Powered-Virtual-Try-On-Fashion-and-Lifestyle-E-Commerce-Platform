@@ -1,4 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import {
   ShoppingBag,
   Heart,
@@ -52,9 +56,74 @@ const MOCK_REVIEWS = [
 
 /* ══════════════════════════════════════════════════════════════ */
 export default function ProductDetailPage({
-  product: p, allProducts, onBack,
-  wishlist, onWish, onAddToCart, addedToCart
+  product: initialProduct,
+  allProducts: initialAllProducts,
+  onBack: initialOnBack,
+  wishlist: initialWishlist,
+  onWish,
+  onAddToCart,
+  addedToCart: initialAddedToCart
 }) {
+  const { id: routeId } = useParams();
+  const navigate = useNavigate();
+  const { addItem } = useCart();
+  const { user, profile, updateProfile } = useAuth();
+
+  const [loadingProduct, setLoadingProduct] = useState(false);
+  const [localProduct, setLocalProduct] = useState(null);
+  const [localAllProducts, setLocalAllProducts] = useState([]);
+  const [localWishlist, setLocalWishlist] = useState([]);
+  const [localAddedToCart, setLocalAddedToCart] = useState({});
+
+  const isRouteMode = !initialProduct;
+
+  useEffect(() => {
+    if (isRouteMode && routeId) {
+      const loadProductFromRoute = async () => {
+        // Validate UUID format to prevent database syntax error
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(routeId)) {
+          console.warn('Invalid product ID format (must be UUID). Redirecting...');
+          navigate('/');
+          return;
+        }
+
+        setLoadingProduct(true);
+        try {
+          const { data, error } = await supabase.from('products').select('*').eq('id', routeId).single();
+          if (error || !data) {
+            console.error('Product not found!', error);
+            navigate('/');
+            return;
+          }
+          setLocalProduct(data);
+          // Also fetch related products of same category
+          const { data: relatedData } = await supabase.from('products').select('*').eq('category', data.category).limit(5);
+          if (relatedData) {
+            setLocalAllProducts(relatedData);
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoadingProduct(false);
+        }
+      };
+      loadProductFromRoute();
+    }
+  }, [routeId, isRouteMode, navigate]);
+
+  // Sync wishlist from user profile when in route mode
+  useEffect(() => {
+    if (isRouteMode && profile?.wishlist) {
+      setLocalWishlist(profile.wishlist);
+    }
+  }, [profile, isRouteMode]);
+
+  const p = (isRouteMode ? localProduct : initialProduct) || {};
+  const allProducts = isRouteMode ? localAllProducts : (initialAllProducts || []);
+  const wishlist = isRouteMode ? localWishlist : (initialWishlist || []);
+  const addedToCart = isRouteMode ? localAddedToCart : (initialAddedToCart || {});
+  const onBack = initialOnBack || (() => navigate(-1));
   const images = (p.images_array && p.images_array.length > 0)
     ? p.images_array
     : [`https://via.placeholder.com/600x700/f8f8f8/aaa?text=${encodeURIComponent(p.name||'Product')}`];
@@ -96,13 +165,13 @@ export default function ProductDetailPage({
   const shareRef     = useRef(null);
 
   /* ── Computed ── */
-  const isWished  = wishlist.includes(p.id);
-  const inCart    = addedToCart[p.id];
+  const isWished  = p.id ? wishlist.includes(p.id) : false;
+  const inCart    = p.id ? addedToCart[p.id] : false;
   const discount  = p.original_price && p.original_price > p.price_lkr
     ? Math.round((1 - p.price_lkr / p.original_price) * 100) : 0;
   const savings   = discount > 0 ? (p.original_price - p.price_lkr) * qty : 0;
   const avgRating = (MOCK_REVIEWS.reduce((s,r)=>s+r.rating,0)/MOCK_REVIEWS.length).toFixed(1);
-  const related   = allProducts.filter(r => r.id !== p.id && r.category === p.category).slice(0,4);
+  const related   = p.id ? allProducts.filter(r => r.id !== p.id && r.category === p.category).slice(0,4) : [];
 
   const ratingCounts = [5,4,3,2,1].map(star => ({
     star, count: MOCK_REVIEWS.filter(r=>r.rating===star).length,
@@ -147,6 +216,7 @@ export default function ProductDetailPage({
 
   // Track recently viewed
   useEffect(() => {
+    if (!p.id) return;
     setRecentlyViewed(prev => {
       const filtered = prev.filter(item=>item.id!==p.id);
       return [p, ...filtered].slice(0,4);
@@ -204,13 +274,46 @@ export default function ProductDetailPage({
 
   const handleAddToCartWithValidation = (e) => {
     if (!selectedSize) { showToast('⚠ Please select a size first!'); return; }
-    onAddToCart(p.id, e, selectedSize, selectedColor || 'Default', qty);
+    if (onAddToCart) {
+      onAddToCart(p.id, e, selectedSize, selectedColor || 'Default', qty);
+    } else {
+      addItem({
+        id: p.id,
+        product_id: p.id,
+        name: p.name,
+        price: p.price_lkr,
+        price_lkr: p.price_lkr,
+        image: p.images_array?.[0] || '',
+        size: selectedSize,
+        color: selectedColor || 'Default',
+        quantity: qty
+      });
+      setLocalAddedToCart(prev => ({...prev, [p.id]: true}));
+      setTimeout(() => setLocalAddedToCart(prev => ({...prev, [p.id]: false})), 1800);
+    }
     showToast('✓ Added to bag!');
   };
 
-  const handleWish = () => {
-    onWish(p.id);
-    showToast(isWished ? 'Removed from wishlist' : '♥ Added to wishlist!');
+  const handleWish = async () => {
+    if (onWish) {
+      onWish(p.id);
+      showToast(isWished ? 'Removed from wishlist' : '♥ Added to wishlist!');
+    } else {
+      if (!user) {
+        showToast('⚠ Please sign in to wishlist items');
+        return;
+      }
+      const prev = profile?.wishlist || [];
+      const next = isWished ? prev.filter(id => id !== p.id) : [...prev, p.id];
+      setLocalWishlist(next);
+      try {
+        await updateProfile({ wishlist: next });
+        showToast(isWished ? 'Removed from wishlist' : '♥ Added to wishlist!');
+      } catch (err) {
+        console.error(err);
+        setLocalWishlist(prev);
+      }
+    }
   };
 
   const TAB_CONTENT = {
@@ -391,6 +494,25 @@ export default function ProductDetailPage({
       </div>
     </div>
   );
+
+  if (loadingProduct || !p || !p.id) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', background: '#f8f8f8', color: '#111', gap: 20
+      }}>
+        <div className="luxury-spinner" style={{
+          width: 50, height: 50, border: '3px solid rgba(0,0,0,0.05)',
+          borderTop: '3px solid #111', borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <p style={{ letterSpacing: '0.2em', textTransform: 'uppercase', fontSize: 11, color: '#111', fontWeight: 600 }}>
+          Loading Style Details...
+        </p>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   /* ── Main Render ── */
   return (

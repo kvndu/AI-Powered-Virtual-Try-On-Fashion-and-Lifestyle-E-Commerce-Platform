@@ -5,7 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, dark = false }) {
   const { addItem } = useCart();
   const { user, profile, updateProfile } = useAuth();
   const [isWishlisted, setIsWishlisted] = useState(
@@ -60,9 +60,16 @@ export default function ProductCard({ product }) {
 
   return (
     <Link
-      to={`/products/${product.id}`}
+      to={`/product/${product.id}`}
       className="product-card"
-      style={{ display: 'block', textDecoration: 'none' }}
+      style={{
+        display: 'block', textDecoration: 'none',
+        ...(dark ? {
+          background: '#1a1a1a',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: 'none',
+        } : {})
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -188,11 +195,11 @@ export default function ProductCard({ product }) {
       </div>
 
       {/* Body */}
-      <div className="product-card-body">
-        <div className="product-category">
-  {product.subcategory}
-</div>
-        <div className="product-title" style={{ marginBottom: 6 }}>{product.name}</div>
+      <div className="product-card-body" style={dark ? { background: '#1a1a1a', borderTop: '1px solid rgba(255,255,255,0.07)' } : {}}>
+        <div className="product-category" style={dark ? { color: '#C9A96E' } : {}}>
+          {product.subcategory}
+        </div>
+        <div className="product-title" style={{ marginBottom: 6, ...(dark ? { color: '#fff' } : {}) }}>{product.name}</div>
 
         {/* Stars */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
@@ -201,29 +208,27 @@ export default function ProductCard({ product }) {
               <Star
                 key={i}
                 size={11}
-                className={i < fullStars ? 'star-filled' : 'star-empty'}
-                fill={i < fullStars ? 'var(--secondary)' : 'none'}
-                color={i < fullStars ? 'var(--secondary)' : 'var(--border-medium)'}
+                fill={i < fullStars ? '#C9A96E' : 'none'}
+                color={i < fullStars ? '#C9A96E' : (dark ? 'rgba(255,255,255,0.2)' : 'var(--border-medium)')}
               />
             ))}
           </div>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+          <span style={{ fontSize: 11, color: dark ? 'rgba(255,255,255,0.4)' : 'var(--text-muted)', fontWeight: 500 }}>
             ({product.reviews_count || 0})
           </span>
         </div>
 
         {/* Price */}
         <div className="price-wrap">
-  <span className="price">
-    LKR {Number(product.price_lkr || 0).toLocaleString()}
-  </span>
-
-  {product.original_price && (
-    <span className="price-original">
-      LKR {Number(product.original_price).toLocaleString()}
-    </span>
-  )}
-</div>
+          <span className="price" style={dark ? { color: '#C9A96E' } : {}}>
+            LKR {Number(product.price_lkr || 0).toLocaleString()}
+          </span>
+          {product.original_price && (
+            <span className="price-original" style={dark ? { color: 'rgba(255,255,255,0.3)' } : {}}>
+              LKR {Number(product.original_price).toLocaleString()}
+            </span>
+          )}
+        </div>
       </div>
     </Link>
   );

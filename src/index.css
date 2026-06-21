@@ -103,6 +103,7 @@ html {
   scroll-behavior: smooth;
 }
 
+
 body {
   font-family: var(--font-body);
   background: var(--bg-base);
@@ -933,4 +934,17 @@ a {
 
 @media (max-width: 480px) {
   .grid-2, .grid-3, .grid-4, .grid-5 { grid-template-columns: 1fr; }
+}
+
+/* ── Hero Fade Up ── */
+@keyframes heroFadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Dark Product Card Override ── */
+.product-card[style*="1a1a1a"]:hover {
+  border-color: rgba(201, 169, 110, 0.4) !important;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5) !important;
+  transform: translateY(-4px) !important;
 }
