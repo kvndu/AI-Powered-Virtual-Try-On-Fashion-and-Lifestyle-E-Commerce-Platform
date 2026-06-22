@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { Toaster } from 'react-hot-toast';
@@ -22,6 +22,7 @@ import BeautyPage from './pages/BeautyPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import ProfilePage from './pages/ProfilePage';
+import AdminDasboardPage from './pages/AdminDasboardPage';
 
 
 // 💡 DYNAMIC ROUTER CONTROLLER:
@@ -52,52 +53,69 @@ function ProductRouteController() {
   return <WomenPage />;
 }
 
+function AppLayout() {
+  const location = useLocation();
+  const isAdminPath = location.pathname.startsWith('/admin');
+
+  if (isAdminPath) {
+    return (
+      <Routes>
+        <Route path="/admin" element={<AdminDasboardPage />} />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
+      </Routes>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      {/* Navbar Component */}
+      <Navbar />
+
+      {/* Page Content Area */}
+      <main style={{ flex: 1, paddingTop: '64px' }}>
+        <Routes>
+          {/* 1. HOME */}
+          <Route path="/" element={<HomePage />} />
+
+          {/* 2. DYNAMIC PRODUCTS LINK HANDLING (Women/Men separation fix) */}
+          <Route path="/products" element={<ProductRouteController />} />
+
+          {/* Direct paths support */}
+          <Route path="/women" element={<WomenPage />} />
+          <Route path="/men"   element={<MenPage />} />
+          <Route path="/kids"  element={<KidsPage />} />
+          <Route path="/toys"  element={<ToysPage />} />
+          <Route path="/beauty" element={<BeautyPage />} />
+
+          {/* Product detail page */}
+          <Route path="/product/:id" element={<ProductDetailPage />} />
+
+          {/* 3. OTHER SECTIONS */}
+          <Route path="/accessories" element={<AccessoriesPage />} />
+          <Route path="/homeware" element={<HomewarePage />} />
+          <Route path="/gift-cards" element={<GiftCardPage />} />
+          <Route path="/offers" element={<OffersPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+
+          {/* Catch-all fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+
+      {/* Footer Component */}
+      <Footer />
+    </div>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
       <CartProvider>
         <Router>
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-
-            {/* Navbar Component */}
-            <Navbar />
-
-            {/* Page Content Area */}
-            <main style={{ flex: 1, paddingTop: '64px' }}>
-              <Routes>
-                {/* 1. HOME */}
-                <Route path="/" element={<HomePage />} />
-
-                {/* 2. DYNAMIC PRODUCTS LINK HANDLING (Women/Men separation fix) */}
-                <Route path="/products" element={<ProductRouteController />} />
-
-                {/* Direct paths support */}
-                <Route path="/women" element={<WomenPage />} />
-                <Route path="/men"   element={<MenPage />} />
-                <Route path="/kids"  element={<KidsPage />} />
-                <Route path="/toys"  element={<ToysPage />} />
-                <Route path="/beauty" element={<BeautyPage />} />
-
-                {/* Product detail page */}
-                <Route path="/product/:id" element={<ProductDetailPage />} />
-
-                {/* 3. OTHER SECTIONS */}
-                <Route path="/accessories" element={<AccessoriesPage />} />
-                <Route path="/homeware" element={<HomewarePage />} />
-                <Route path="/gift-cards" element={<GiftCardPage />} />
-                <Route path="/offers" element={<OffersPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-
-                {/* Catch-all fallback */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </main>
-
-            {/* Footer Component */}
-            <Footer />
-          </div>
+          <AppLayout />
 
           {/* Toast Notification Container */}
           <Toaster
@@ -124,4 +142,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;
