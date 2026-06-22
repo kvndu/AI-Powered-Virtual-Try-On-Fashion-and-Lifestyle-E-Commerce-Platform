@@ -62,6 +62,7 @@ export default function Navbar() {
     { to: '/products?category=homeware', label: 'HOMEWARE' },
     { to: '/gift-cards', label: 'GIFT CARDS' },
     { to: '/offers', label: 'OFFERS' },
+    { to: '/admin', label: 'ADMIN' },
   ];
 
   const isLinkActive = (linkTo) => {
