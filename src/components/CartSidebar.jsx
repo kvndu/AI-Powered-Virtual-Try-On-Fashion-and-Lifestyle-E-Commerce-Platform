@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, ShoppingBag, Plus, Minus, Trash2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import toast from 'react-hot-toast';
 
 const fmt = (n) => parseInt(n).toLocaleString('en-LK');
 
@@ -11,6 +12,25 @@ export default function CartSidebar({ isOpen, onClose }) {
   const [phoneNumbers, setPhoneNumbers] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [giftWrap, setGiftWrap] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState('');
+  const [discountPercent, setDiscountPercent] = useState(0);
+
+  // Sync applied coupon from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('ba_applied_coupon');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setAppliedCoupon(parsed.code);
+        setDiscountPercent(parsed.discount);
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      setAppliedCoupon('');
+      setDiscountPercent(0);
+    }
+  }, [isOpen]);
 
   const handleCheckout = () => {
     onClose();
@@ -19,7 +39,28 @@ export default function CartSidebar({ isOpen, onClose }) {
 
   const handleApplyCoupon = () => {
     if (!couponCode.trim()) return;
-    alert(`Coupon code applied: ${couponCode.trim()}`);
+    
+    // Load admin coupons list
+    const couponsString = localStorage.getItem('ba_admin_coupons');
+    const coupons = couponsString ? JSON.parse(couponsString) : [
+      { code: 'SUMMER20', discount: '20%', status: 'Active' },
+      { code: 'WELCOME10', discount: '10%', status: 'Active' }
+    ];
+
+    const matched = coupons.find(c => c.code.toUpperCase() === couponCode.trim().toUpperCase() && c.status === 'Active');
+    if (matched) {
+      const pct = parseInt(matched.discount) || 0;
+      setDiscountPercent(pct);
+      setAppliedCoupon(matched.code.toUpperCase());
+      localStorage.setItem('ba_applied_coupon', JSON.stringify({ code: matched.code.toUpperCase(), discount: pct }));
+      toast.success(`Coupon ${matched.code} applied! ${pct}% discount.`, {
+        style: { background: '#000', color: '#fff', fontSize: '12px' }
+      });
+    } else {
+      toast.error('Invalid or expired coupon code.', {
+        style: { background: '#000', color: '#fff', fontSize: '12px' }
+      });
+    }
     setCouponCode('');
   };
 
@@ -249,6 +290,12 @@ export default function CartSidebar({ isOpen, onClose }) {
                     <span style={{ fontWeight: '500' }}>Subtotal</span>
                     <strong style={{ fontSize: '18px', fontWeight: '900' }}>LKR {fmt(total)}</strong>
                   </div>
+                  {discountPercent > 0 && (
+                    <div className="summary-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#dc2626', fontSize: '13px', fontWeight: 600 }}>
+                      <span>Discount ({appliedCoupon})</span>
+                      <span>-LKR {fmt((total * discountPercent) / 100)}</span>
+                    </div>
+                  )}
                   <div className="summary-row gift-row" style={{ display: 'flex', alignItems: 'center' }}>
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#111111' }}>
                       <input
@@ -273,7 +320,7 @@ export default function CartSidebar({ isOpen, onClose }) {
                   onMouseEnter={e => e.currentTarget.style.background = '#1a1a1a'}
                   onMouseLeave={e => e.currentTarget.style.background = '#000000'}
                 >
-                  Checkout • LKR {fmt(total)}
+                  Checkout • LKR {fmt(total - (total * discountPercent) / 100)}
                 </button>
 
                 <Link

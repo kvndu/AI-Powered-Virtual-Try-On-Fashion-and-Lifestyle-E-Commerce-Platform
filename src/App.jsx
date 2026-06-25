@@ -23,6 +23,7 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDasboardPage from './pages/AdminDasboardPage';
+import CheckoutPage from './pages/CheckoutPage';
 
 
 // 💡 DYNAMIC ROUTER CONTROLLER:
@@ -98,6 +99,7 @@ function AppLayout() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
 
           {/* Catch-all fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
