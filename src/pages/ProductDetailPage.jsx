@@ -23,7 +23,13 @@ import {
   Ruler,
   Package,
   Layers,
-  Sparkle
+  Sparkle,
+  Play,
+  Pause,
+  Maximize2,
+  Eye,
+  Compass,
+  Focus
 } from 'lucide-react';
 
 import {
@@ -229,16 +235,16 @@ export default function ProductDetailPage({
   const [sizeGuideOpen,  setSizeGuideOpen]  = useState(false);
   const [tryOnOpen,      setTryOnOpen]      = useState(false);
   const [sizeQuizOpen,   setSizeQuizOpen]   = useState(false);
-  const [spinMode,       setSpinMode]       = useState(false);
-  const [spinAngle,      setSpinAngle]      = useState(0);
-  const [autoSpin,       setAutoSpin]       = useState(false);
-  const [isDragging,     setIsDragging]     = useState(false);
-  const [dragStart,      setDragStart]      = useState(0);
-  const [dragAngle,      setDragAngle]      = useState(0);
-  const [zoomPos,        setZoomPos]        = useState(null);
-  const [showZoom,       setShowZoom]       = useState(false);
-  const [hoveredRelated, setHoveredRelated] = useState(null);
-  const [toastMsg,       setToastMsg]       = useState('');
+  // Modern Product Showcase States (Replaces 360 Spin)
+  const [viewMode,        setViewMode]       = useState('gallery'); // 'gallery' | 'spotlight' | 'cinema'
+  const [activeHotspot,   setActiveHotspot]  = useState(null);
+  const [parallaxPos,     setParallaxPos]    = useState({ rotateX: 0, rotateY: 0, glowX: 50, glowY: 50 });
+  const [isCinemaPlaying, setIsCinemaPlaying]= useState(true);
+  const [cinemaProgress,  setCinemaProgress] = useState(0);
+  const [zoomPos,         setZoomPos]        = useState(null);
+  const [showZoom,        setShowZoom]       = useState(false);
+  const [hoveredRelated,  setHoveredRelated] = useState(null);
+  const [toastMsg,        setToastMsg]       = useState('');
   const [scrolledPastMain, setScrolledPastMain] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState(SRI_LANKA_DISTRICTS[0]);
 
@@ -252,8 +258,48 @@ export default function ProductDetailPage({
 
   const mainContainerRef = useRef(null);
   const imgRef           = useRef(null);
-  const autoSpinRef      = useRef(null);
+  const cinemaTimerRef   = useRef(null);
   const shareRef         = useRef(null);
+
+  /* Craftsmanship Hotspots Definition */
+  const PRODUCT_HOTSPOTS = useMemo(() => [
+    {
+      id: 'weave',
+      x: 34,
+      y: 28,
+      title: 'Luxury Weave & Material',
+      tag: 'PREMIUM FABRIC',
+      desc: `Custom high-density textile engineered for elegant structure, shape retention, and breathable comfort.`,
+      icon: '✨'
+    },
+    {
+      id: 'silhouette',
+      x: 68,
+      y: 46,
+      title: 'Precision Silhouette & Fit',
+      tag: 'SIGNATURE CUT',
+      desc: `Sculpted ergonomic seams designed to contour naturally for an effortless, tailored drape.`,
+      icon: '✂️'
+    },
+    {
+      id: 'hardware',
+      x: 44,
+      y: 72,
+      title: 'Hand-Finished Accent Trims',
+      tag: 'CRAFT DETAILS',
+      desc: `Reinforced edge stitching and anti-corrosion polished metallic trims built for lasting durability.`,
+      icon: '💎'
+    },
+    {
+      id: 'lining',
+      x: 76,
+      y: 26,
+      title: 'Silky Comfort Inner Lining',
+      tag: 'ALL-DAY WEAR',
+      desc: `Ultra-soft friction guard inner layer designed to ensure maximum skin comfort and ease of movement.`,
+      icon: '🌿'
+    }
+  ], []);
 
   /* Computed Financials */
   const isWished  = p.id ? wishlist.includes(p.id) : false;
@@ -278,10 +324,6 @@ export default function ProductDetailPage({
     reviewSort === 'lowest'  ? (a.rating||5) - (b.rating||5) : 0
   );
 
-  const spinImgIdx = spinMode
-    ? Math.floor((spinAngle / 360) * images.length) % images.length
-    : activeImg;
-
   /* Effects */
   useEffect(() => { window.scrollTo(0,0); }, [p.id]);
 
@@ -298,14 +340,23 @@ export default function ProductDetailPage({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  /* Cinematic Showcase Auto-Reel Timer Effect */
   useEffect(() => {
-    if (autoSpin && spinMode) {
-      autoSpinRef.current = setInterval(() => setSpinAngle(a=>(a+2)%360), 30);
+    if (viewMode === 'cinema' && isCinemaPlaying) {
+      cinemaTimerRef.current = setInterval(() => {
+        setCinemaProgress(prev => {
+          if (prev >= 100) {
+            setActiveImg(i => (i + 1) % (images.length || 1));
+            return 0;
+          }
+          return prev + 1.2;
+        });
+      }, 40);
     } else {
-      clearInterval(autoSpinRef.current);
+      clearInterval(cinemaTimerRef.current);
     }
-    return () => clearInterval(autoSpinRef.current);
-  }, [autoSpin, spinMode]);
+    return () => clearInterval(cinemaTimerRef.current);
+  }, [viewMode, isCinemaPlaying, images.length]);
 
   useEffect(() => {
     const handler = e => {
@@ -345,25 +396,28 @@ export default function ProductDetailPage({
     }
   };
 
-  const handleSpinMouseDown = e => {
-    if (!spinMode) return;
-    setIsDragging(true); setAutoSpin(false);
-    setDragStart(e.clientX); setDragAngle(spinAngle);
-  };
-  const handleSpinMouseMove = e => {
-    if (!isDragging||!spinMode) return;
-    const delta = e.clientX - dragStart;
-    setSpinAngle(((dragAngle+delta*0.8)%360+360)%360);
-  };
-  const handleSpinMouseUp = () => setIsDragging(false);
-
-  const handleMouseMove = e => {
-    if (!imgRef.current||spinMode) return;
+  const handleStageMouseMove = e => {
+    if (!imgRef.current) return;
     const rect = imgRef.current.getBoundingClientRect();
-    setZoomPos({
-      x:((e.clientX-rect.left)/rect.width)*100,
-      y:((e.clientY-rect.top)/rect.height)*100,
-    });
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const pctX = Math.min(Math.max((x / rect.width) * 100, 0), 100);
+    const pctY = Math.min(Math.max((y / rect.height) * 100, 0), 100);
+
+    setZoomPos({ x: pctX, y: pctY });
+
+    if (viewMode === 'gallery') {
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const rotateX = ((y - centerY) / centerY) * -9;
+      const rotateY = ((x - centerX) / centerX) * 9;
+      setParallaxPos({ rotateX, rotateY, glowX: pctX, glowY: pctY });
+    }
+  };
+
+  const handleStageMouseLeave = () => {
+    setShowZoom(false);
+    setParallaxPos({ rotateX: 0, rotateY: 0, glowX: 50, glowY: 50 });
   };
 
   const handleCopyLink = () => {
@@ -910,192 +964,176 @@ export default function ProductDetailPage({
         display:'grid',gridTemplateColumns:'56% 1fr',gap:'60px',alignItems:'start',
       }}>
 
-        {/* ══ LEFT: Image Viewer Component ══ */}
+        {/* ══ LEFT: Interactive Product Showcase ══ */}
         <div style={{position:'sticky',top:'90px'}}>
-          
-          {/* View mode toggle pill */}
+
+          {/* ── Mode Selector Tabs ── */}
           <div style={{
-            display:'flex',gap:'6px',marginBottom:'16px',
-            background:'rgba(255,255,255,0.04)',borderRadius:'14px',padding:'5px',
-            border:'1px solid rgba(255,255,255,0.08)',width:'fit-content',
-            backdropFilter:'blur(10px)',
+            display:'flex',gap:'5px',marginBottom:'16px',
+            background:'rgba(255,255,255,0.04)',borderRadius:'16px',padding:'5px',
+            border:'1px solid rgba(255,255,255,0.08)',
+            backdropFilter:'blur(12px)',
           }}>
-            {[{id:false,label:'📷 GALLERY'},{id:true,label:'↻ 360° VIEW'}].map(m=>(
-              <button key={String(m.id)} onClick={()=>{setSpinMode(m.id);setAutoSpin(m.id);}} style={{
-                padding:'8px 20px',border:'none',borderRadius:'10px',cursor:'pointer',
-                background: spinMode===m.id ? '#C9A96E' : 'transparent',
-                color: spinMode===m.id ? '#000' : 'rgba(255,255,255,0.6)',
-                fontSize:'10px',fontWeight:'900',letterSpacing:'1.5px',
-                transition:'all 0.25s',fontFamily:'"Outfit",sans-serif',
-              }}>{m.label}</button>
+            {[
+              {id:'gallery',  label:'📷 STUDIO',    sub:'Gallery'},
+              {id:'spotlight',label:'✨ SPOTLIGHT',  sub:'Details'},
+              {id:'cinema',   label:'🎬 CINEMATIC',  sub:'Showcase'},
+            ].map(m => (
+              <button key={m.id} onClick={() => {
+                setViewMode(m.id);
+                setActiveHotspot(null);
+                if (m.id === 'cinema') { setCinemaProgress(0); setIsCinemaPlaying(true); }
+              }} style={{
+                flex:1, padding:'9px 8px', border:'none', borderRadius:'11px',
+                cursor:'pointer', transition:'all 0.28s ease',
+                background: viewMode===m.id
+                  ? 'linear-gradient(135deg,#C9A96E,#a07a45)'
+                  : 'transparent',
+                color: viewMode===m.id ? '#000' : 'rgba(255,255,255,0.5)',
+                boxShadow: viewMode===m.id ? '0 4px 16px rgba(201,169,110,0.4)' : 'none',
+                fontFamily:'"Outfit",sans-serif',
+              }}>
+                <div style={{fontSize:'10px',fontWeight:'900',letterSpacing:'1px'}}>{m.label}</div>
+                <div style={{fontSize:'8px',fontWeight:'600',opacity:0.75,marginTop:'1px',letterSpacing:'0.5px'}}>{m.sub}</div>
+              </button>
             ))}
           </div>
 
           <div style={{display:'flex',gap:'16px'}}>
-            {/* Thumbnails list */}
-            {!spinMode && (
+            {/* Thumbnails (Gallery & Cinema only) */}
+            {viewMode !== 'spotlight' && (
               <div style={{display:'flex',flexDirection:'column',gap:'10px',width:'76px',flexShrink:0}}>
-                {images.map((src,idx)=>(
-                  <div key={idx} onClick={()=>setActiveImg(idx)} style={{
+                {images.map((src,idx) => (
+                  <div key={idx} onClick={() => { setActiveImg(idx); setCinemaProgress(0); }} style={{
                     width:'76px',height:'94px',borderRadius:'12px',overflow:'hidden',
                     border: activeImg===idx ? '2px solid #C9A96E' : '1px solid rgba(255,255,255,0.1)',
                     cursor:'pointer',transition:'all 0.25s',
-                    boxShadow: activeImg===idx ? '0 0 16px rgba(201,169,110,0.35)' : 'none',
-                    transform: activeImg===idx ? 'scale(1.03)' : 'scale(1)',
-                    opacity: activeImg===idx ? 1 : 0.6,
-                    background: '#0d0d0d'
+                    boxShadow: activeImg===idx ? '0 0 16px rgba(201,169,110,0.45)' : 'none',
+                    transform: activeImg===idx ? 'scale(1.05)' : 'scale(1)',
+                    opacity: activeImg===idx ? 1 : 0.55,
+                    background:'#0d0d0d',
+                    position:'relative',
                   }}>
                     <img src={src} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top center'}}/>
+                    {/* Cinema active thumb timer bar */}
+                    {viewMode==='cinema' && activeImg===idx && (
+                      <div style={{
+                        position:'absolute',bottom:0,left:0,right:0,height:'3px',
+                        background:'rgba(0,0,0,0.4)',
+                      }}>
+                        <div style={{
+                          height:'100%',background:'#C9A96E',
+                          width:`${cinemaProgress}%`,transition:'width 0.04s linear',
+                        }}/>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Main Stage Display */}
+            {/* ── Main Stage ── */}
             <div style={{flex:1,position:'relative'}}>
+              {/* 3D Tilt wrapper for Gallery mode */}
               <div
                 ref={imgRef}
-                onMouseEnter={()=>!spinMode&&setShowZoom(true)}
-                onMouseLeave={()=>{setShowZoom(false);setIsDragging(false);}}
-                onMouseMove={spinMode?handleSpinMouseMove:handleMouseMove}
-                onMouseDown={spinMode?handleSpinMouseDown:undefined}
-                onMouseUp={handleSpinMouseUp}
-                onClick={()=>{if(!spinMode)setLightbox(true);}}
+                onMouseEnter={() => { if(viewMode==='gallery') setShowZoom(true); }}
+                onMouseLeave={handleStageMouseLeave}
+                onMouseMove={handleStageMouseMove}
+                onClick={() => { if(viewMode==='gallery') setLightbox(true); }}
                 style={{
-                  position:'relative',borderRadius:'22px',overflow:'hidden',
-                  background:'#0d0d0d',aspectRatio:'3/4',
-                  border:'1px solid rgba(255,255,255,0.08)',
-                  cursor:spinMode?(isDragging?'grabbing':'grab'):(showZoom?'zoom-in':'pointer'),
+                  position:'relative',borderRadius:'22px',overflow:'visible',
+                  aspectRatio:'3/4',
                   userSelect:'none',
-                  boxShadow:'0 20px 60px rgba(0,0,0,0.6)',
+                  cursor: viewMode==='gallery' ? (showZoom ? 'zoom-in' : 'pointer') : 'default',
+                  transition:'transform 0.08s ease',
+                  transform: viewMode==='gallery'
+                    ? `perspective(1000px) rotateX(${parallaxPos.rotateX}deg) rotateY(${parallaxPos.rotateY}deg) scale(${showZoom ? 1.015 : 1})`
+                    : 'perspective(1000px) rotateX(0deg) rotateY(0deg)',
+                  transformStyle:'preserve-3d',
+                  boxShadow: viewMode==='gallery'
+                    ? `0 24px 60px rgba(0,0,0,0.75), 0 0 40px rgba(201,169,110,${showZoom?'0.12':'0.04'})`
+                    : '0 20px 60px rgba(0,0,0,0.6)',
                 }}
               >
-                {images.map((src,idx)=>(
-                  <img key={idx} src={src} alt={p.name} style={{
-                    position:'absolute',inset:0,width:'100%',height:'100%',
-                    objectFit:'cover',objectPosition:'top center',
-                    opacity:(spinMode?spinImgIdx:activeImg)===idx?1:0,
-                    transition:spinMode?'none':'opacity 0.4s ease',
-                    pointerEvents:'none',
-                  }}/>
-                ))}
+                {/* Image container */}
+                <div style={{
+                  position:'relative',borderRadius:'22px',overflow:'hidden',
+                  width:'100%',height:'100%',
+                  background:'#0d0d0d',
+                  border:'1px solid rgba(255,255,255,0.08)',
+                }}>
+                  {/* Images stack */}
+                  {images.map((src,idx) => (
+                    <img key={idx} src={src} alt={p.name} style={{
+                      position:'absolute',inset:0,width:'100%',height:'100%',
+                      objectFit:'cover',objectPosition:'top center',
+                      opacity: activeImg===idx ? 1 : 0,
+                      transition: viewMode==='cinema' ? 'opacity 0.8s ease' : 'opacity 0.4s ease',
+                      pointerEvents:'none',
+                      // Ken Burns for cinema mode
+                      transform: viewMode==='cinema' && activeImg===idx
+                        ? `scale(${1 + cinemaProgress * 0.0006})`
+                        : 'scale(1)',
+                      transformOrigin:'center center',
+                    }}/>
+                  ))}
 
-                {/* 360 Overlay */}
-                {spinMode && (
-                  <div style={{
-                    position:'absolute',inset:0,display:'flex',flexDirection:'column',
-                    alignItems:'center',justifyContent:'flex-end',pointerEvents:'none',
-                    paddingBottom:'24px',gap:'12px',
-                  }}>
-                    {!isDragging && (
+                  {/* ── GALLERY MODE overlays ── */}
+                  {viewMode === 'gallery' && (<>
+                    {/* Dynamic glare spot */}
+                    {showZoom && (
                       <div style={{
-                        background:'rgba(0,0,0,0.75)',backdropFilter:'blur(10px)',
-                        border:'1px solid rgba(201,169,110,0.4)',
-                        color:'#C9A96E',fontSize:'10px',fontWeight:'900',
-                        padding:'8px 18px',borderRadius:'20px',letterSpacing:'2px',
-                      }}>
-                        ↔ DRAG TO ROTATE
-                      </div>
+                        position:'absolute',inset:0,pointerEvents:'none',zIndex:2,
+                        background:`radial-gradient(circle at ${parallaxPos.glowX}% ${parallaxPos.glowY}%, rgba(201,169,110,0.07) 0%, transparent 60%)`,
+                        borderRadius:'22px',
+                      }}/>
                     )}
-                    <div style={{display:'flex',gap:'4px'}}>
-                      {images.map((_,i)=>(
-                        <div key={i} style={{
-                          width:spinImgIdx===i?'24px':'6px',height:'6px',borderRadius:'10px',
-                          background:spinImgIdx===i?'#C9A96E':'rgba(255,255,255,0.3)',
-                          transition:'all 0.25s',
-                        }}/>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
-                {spinMode && (
-                  <button
-                    onMouseDown={e=>e.stopPropagation()}
-                    onClick={e=>{e.stopPropagation();setAutoSpin(a=>!a);}}
-                    style={{
-                      position:'absolute',top:'16px',right:'16px',
-                      background: autoSpin ? '#C9A96E' : 'rgba(0,0,0,0.7)',
-                      color: autoSpin ? '#000' : '#C9A96E',
-                      border: '1px solid rgba(201,169,110,0.4)',borderRadius:'20px',padding:'7px 16px',
-                      fontSize:'9px',fontWeight:'900',cursor:'pointer',
-                      letterSpacing:'1.5px',backdropFilter:'blur(8px)',
-                    }}
-                  >
-                    {autoSpin ? '⏸ PAUSE' : '▶ AUTO SPIN'}
-                  </button>
-                )}
+                    {/* Zoom Lens */}
+                    {showZoom && zoomPos && (
+                      <div style={{
+                        position:'absolute',
+                        width:'148px',height:'148px',borderRadius:'50%',
+                        border:'2px solid #C9A96E',
+                        boxShadow:'0 0 30px rgba(0,0,0,0.8), 0 0 20px rgba(201,169,110,0.5)',
+                        left:`calc(${zoomPos.x}% - 74px)`,
+                        top:`calc(${zoomPos.y}% - 74px)`,
+                        backgroundImage:`url(${images[activeImg]})`,
+                        backgroundSize:'380%',
+                        backgroundPosition:`${zoomPos.x}% ${zoomPos.y}%`,
+                        backgroundRepeat:'no-repeat',
+                        pointerEvents:'none',zIndex:5,
+                      }}/>
+                    )}
 
-                {/* Zoom Lens */}
-                {showZoom && zoomPos && !spinMode && (
-                  <div style={{
-                    position:'absolute',
-                    width:'160px',height:'160px',borderRadius:'50%',
-                    border:'2px solid #C9A96E',
-                    boxShadow:'0 0 30px rgba(0,0,0,0.8), 0 0 15px rgba(201,169,110,0.4)',
-                    left:`calc(${zoomPos.x}% - 80px)`,
-                    top:`calc(${zoomPos.y}% - 80px)`,
-                    backgroundImage:`url(${images[activeImg]})`,
-                    backgroundSize:'350%',
-                    backgroundPosition:`${zoomPos.x}% ${zoomPos.y}%`,
-                    backgroundRepeat:'no-repeat',
-                    pointerEvents:'none',zIndex:5,
-                  }}/>
-                )}
+                    {/* Nav Arrows */}
+                    {images.length > 1 && (<>
+                      <button onClick={e=>{e.stopPropagation();setActiveImg(i=>(i-1+images.length)%images.length);}} style={{
+                        position:'absolute',left:'14px',top:'50%',transform:'translateY(-50%)',
+                        background:'rgba(0,0,0,0.65)',backdropFilter:'blur(10px)',
+                        border:'1px solid rgba(201,169,110,0.4)',borderRadius:'50%',
+                        width:'42px',height:'42px',cursor:'pointer',zIndex:4,
+                        display:'flex',alignItems:'center',justifyContent:'center',color:'#C9A96E',
+                        boxShadow:'0 4px 15px rgba(0,0,0,0.4)',transition:'all 0.2s',
+                      }}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor='#C9A96E'}
+                      onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(201,169,110,0.4)'}
+                      ><ChevronLeft size={20}/></button>
+                      <button onClick={e=>{e.stopPropagation();setActiveImg(i=>(i+1)%images.length);}} style={{
+                        position:'absolute',right:'14px',top:'50%',transform:'translateY(-50%)',
+                        background:'rgba(0,0,0,0.65)',backdropFilter:'blur(10px)',
+                        border:'1px solid rgba(201,169,110,0.4)',borderRadius:'50%',
+                        width:'42px',height:'42px',cursor:'pointer',zIndex:4,
+                        display:'flex',alignItems:'center',justifyContent:'center',color:'#C9A96E',
+                        boxShadow:'0 4px 15px rgba(0,0,0,0.4)',transition:'all 0.2s',
+                      }}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor='#C9A96E'}
+                      onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(201,169,110,0.4)'}
+                      ><ChevronRight size={20}/></button>
+                    </>)}
 
-                {/* Nav Arrows */}
-                {!spinMode && images.length > 1 && (
-                  <>
-                    <button onClick={e=>{e.stopPropagation();setActiveImg(i=>(i-1+images.length)%images.length);}} style={{
-                      position:'absolute',left:'14px',top:'50%',transform:'translateY(-50%)',
-                      background:'rgba(0,0,0,0.65)',backdropFilter:'blur(10px)',
-                      border:'1px solid rgba(201,169,110,0.4)',borderRadius:'50%',
-                      width:'42px',height:'42px',cursor:'pointer',zIndex:4,
-                      display:'flex',alignItems:'center',justifyContent:'center',color:'#C9A96E',
-                      boxShadow:'0 4px 15px rgba(0,0,0,0.4)',transition:'all 0.2s',
-                    }}
-                    onMouseEnter={e=>e.currentTarget.style.borderColor='#C9A96E'}
-                    onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(201,169,110,0.4)'}
-                    ><ChevronLeft size={20}/></button>
-                    
-                    <button onClick={e=>{e.stopPropagation();setActiveImg(i=>(i+1)%images.length);}} style={{
-                      position:'absolute',right:'14px',top:'50%',transform:'translateY(-50%)',
-                      background:'rgba(0,0,0,0.65)',backdropFilter:'blur(10px)',
-                      border:'1px solid rgba(201,169,110,0.4)',borderRadius:'50%',
-                      width:'42px',height:'42px',cursor:'pointer',zIndex:4,
-                      display:'flex',alignItems:'center',justifyContent:'center',color:'#C9A96E',
-                      boxShadow:'0 4px 15px rgba(0,0,0,0.4)',transition:'all 0.2s',
-                    }}
-                    onMouseEnter={e=>e.currentTarget.style.borderColor='#C9A96E'}
-                    onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(201,169,110,0.4)'}
-                    ><ChevronRight size={20}/></button>
-                  </>
-                )}
-
-                {/* Badges */}
-                <div style={{position:'absolute',top:'16px',left:'16px',display:'flex',flexDirection:'column',gap:'6px',zIndex:3,pointerEvents:'none'}}>
-                  {discount > 0 && (
-                    <span style={{background:'#C9A96E',color:'#000',fontSize:'9px',fontWeight:'900',padding:'4px 10px',letterSpacing:'1px',boxShadow:'0 4px 12px rgba(201,169,110,0.3)'}}>
-                      -{discount}% OFF
-                    </span>
-                  )}
-                  <span style={{background:'rgba(255,255,255,0.12)',backdropFilter:'blur(8px)',color:'white',fontSize:'9px',fontWeight:'900',padding:'4px 10px',letterSpacing:'1px',border:'1px solid rgba(255,255,255,0.2)'}}>
-                    {p.tag || 'LUXURY EDIT'}
-                  </span>
-                </div>
-
-                {/* Controls Overlay */}
-                {!spinMode && (
-                  <>
-                    <div style={{
-                      position:'absolute',bottom:'16px',right:'16px',zIndex:4,
-                      background:'rgba(0,0,0,0.7)',borderRadius:'10px',padding:'7px 12px',
-                      cursor:'pointer',boxShadow:'0 4px 15px rgba(0,0,0,0.4)',
-                      border:'1px solid rgba(201,169,110,0.3)',
-                      display:'flex',alignItems:'center',gap:'6px',color:'#C9A96E',
-                    }}>
-                      <ZoomIn size={14}/>
-                    </div>
+                    {/* Counter & Fullscreen hint */}
                     <div style={{
                       position:'absolute',bottom:'16px',left:'16px',zIndex:4,
                       background:'rgba(0,0,0,0.7)',color:'#C9A96E',
@@ -1105,12 +1143,229 @@ export default function ProductDetailPage({
                     }}>
                       {activeImg+1} / {images.length}
                     </div>
-                  </>
-                )}
+                    <div style={{
+                      position:'absolute',bottom:'16px',right:'16px',zIndex:4,
+                      background:'rgba(0,0,0,0.7)',borderRadius:'10px',padding:'7px 12px',
+                      cursor:'pointer',boxShadow:'0 4px 15px rgba(0,0,0,0.4)',
+                      border:'1px solid rgba(201,169,110,0.3)',
+                      display:'flex',alignItems:'center',gap:'6px',color:'#C9A96E',
+                    }} onClick={e=>{e.stopPropagation();setLightbox(true);}}>
+                      <Maximize2 size={14}/>
+                    </div>
+                  </>)}
+
+                  {/* ── SPOTLIGHT MODE overlays ── */}
+                  {viewMode === 'spotlight' && (<>
+                    {/* Dark vignette to pop hotspots */}
+                    <div style={{
+                      position:'absolute',inset:0,zIndex:2,pointerEvents:'none',
+                      background:'radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.55) 100%)',
+                    }}/>
+
+                    {/* Hotspot pins */}
+                    {PRODUCT_HOTSPOTS.map(hs => (
+                      <div
+                        key={hs.id}
+                        onClick={e => { e.stopPropagation(); setActiveHotspot(activeHotspot===hs.id ? null : hs.id); }}
+                        style={{
+                          position:'absolute',
+                          left:`${hs.x}%`,top:`${hs.y}%`,
+                          transform:'translate(-50%,-50%)',
+                          zIndex:6, cursor:'pointer',
+                        }}
+                      >
+                        {/* Pulsing ring */}
+                        <div style={{
+                          position:'absolute',inset:'-10px',borderRadius:'50%',
+                          border:'2px solid rgba(201,169,110,0.5)',
+                          animation:'hotspot-pulse 2s ease-in-out infinite',
+                          animationDelay: `${PRODUCT_HOTSPOTS.indexOf(hs)*0.5}s`,
+                        }}/>
+                        {/* Dot */}
+                        <div style={{
+                          width:'28px',height:'28px',borderRadius:'50%',
+                          background: activeHotspot===hs.id
+                            ? 'linear-gradient(135deg,#C9A96E,#a07a45)'
+                            : 'rgba(0,0,0,0.75)',
+                          border:`2px solid ${activeHotspot===hs.id ? '#C9A96E' : 'rgba(201,169,110,0.7)'}`,
+                          backdropFilter:'blur(8px)',
+                          display:'flex',alignItems:'center',justifyContent:'center',
+                          fontSize:'13px',
+                          boxShadow: activeHotspot===hs.id
+                            ? '0 0 20px rgba(201,169,110,0.7)'
+                            : '0 0 10px rgba(0,0,0,0.6)',
+                          transition:'all 0.25s',
+                        }}>
+                          {hs.icon}
+                        </div>
+
+                        {/* Info card popup */}
+                        {activeHotspot === hs.id && (
+                          <div style={{
+                            position:'absolute',
+                            left: hs.x > 55 ? 'auto' : '38px',
+                            right: hs.x > 55 ? '38px' : 'auto',
+                            top: hs.y > 60 ? 'auto' : '0',
+                            bottom: hs.y > 60 ? '0' : 'auto',
+                            width:'200px',
+                            background:'rgba(10,10,10,0.92)',
+                            backdropFilter:'blur(20px)',
+                            border:'1px solid rgba(201,169,110,0.3)',
+                            borderRadius:'14px',
+                            padding:'14px',
+                            zIndex:10,
+                            boxShadow:'0 8px 40px rgba(0,0,0,0.8), 0 0 20px rgba(201,169,110,0.15)',
+                          }}>
+                            <div style={{
+                              fontSize:'7px',color:'#C9A96E',fontWeight:'900',
+                              letterSpacing:'2px',marginBottom:'6px',
+                            }}>{hs.tag}</div>
+                            <div style={{
+                              fontSize:'12px',color:'#fff',fontWeight:'700',
+                              marginBottom:'6px',lineHeight:'1.3',
+                              fontFamily:'"Outfit",sans-serif',
+                            }}>{hs.title}</div>
+                            <div style={{
+                              fontSize:'10px',color:'rgba(255,255,255,0.6)',
+                              lineHeight:'1.55',fontWeight:'400',
+                            }}>{hs.desc}</div>
+                            <div style={{
+                              marginTop:'10px',display:'flex',alignItems:'center',gap:'6px',
+                            }}>
+                              <div style={{
+                                height:'1px',flex:1,
+                                background:'linear-gradient(90deg,rgba(201,169,110,0.5),transparent)',
+                              }}/>
+                              <span style={{fontSize:'8px',color:'rgba(201,169,110,0.6)',fontWeight:'700',letterSpacing:'1px'}}>CRAFTED WITH CARE</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Instructions hint */}
+                    {!activeHotspot && (
+                      <div style={{
+                        position:'absolute',bottom:'20px',left:'50%',transform:'translateX(-50%)',
+                        background:'rgba(0,0,0,0.8)',backdropFilter:'blur(10px)',
+                        border:'1px solid rgba(201,169,110,0.35)',
+                        color:'#C9A96E',fontSize:'9px',fontWeight:'900',
+                        padding:'8px 18px',borderRadius:'20px',letterSpacing:'2px',
+                        zIndex:5,pointerEvents:'none',whiteSpace:'nowrap',
+                      }}>
+                        ✦ TAP GLOWING PINS TO EXPLORE CRAFTSMANSHIP
+                      </div>
+                    )}
+                  </>)}
+
+                  {/* ── CINEMA MODE overlays ── */}
+                  {viewMode === 'cinema' && (<>
+                    {/* Golden vignette */}
+                    <div style={{
+                      position:'absolute',inset:0,zIndex:2,pointerEvents:'none',
+                      background:'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%)',
+                    }}/>
+                    {/* Top gradient fade */}
+                    <div style={{
+                      position:'absolute',top:0,left:0,right:0,height:'80px',zIndex:2,
+                      pointerEvents:'none',
+                      background:'linear-gradient(180deg,rgba(0,0,0,0.5) 0%,transparent 100%)',
+                    }}/>
+
+                    {/* Play/Pause */}
+                    <button
+                      onMouseDown={e=>e.stopPropagation()}
+                      onClick={e=>{e.stopPropagation();setIsCinemaPlaying(p=>!p);}}
+                      style={{
+                        position:'absolute',top:'16px',right:'16px',zIndex:5,
+                        background: isCinemaPlaying ? 'rgba(201,169,110,0.15)' : '#C9A96E',
+                        color: isCinemaPlaying ? '#C9A96E' : '#000',
+                        border:'1px solid rgba(201,169,110,0.5)',borderRadius:'50%',
+                        width:'40px',height:'40px',cursor:'pointer',
+                        display:'flex',alignItems:'center',justifyContent:'center',
+                        backdropFilter:'blur(10px)',transition:'all 0.2s',
+                        boxShadow: isCinemaPlaying ? 'none' : '0 0 20px rgba(201,169,110,0.5)',
+                      }}
+                    >
+                      {isCinemaPlaying ? <Pause size={16}/> : <Play size={16}/>}
+                    </button>
+
+                    {/* Cinematic label */}
+                    <div style={{
+                      position:'absolute',top:'16px',left:'16px',zIndex:5,
+                      background:'rgba(0,0,0,0.7)',backdropFilter:'blur(8px)',
+                      border:'1px solid rgba(201,169,110,0.3)',
+                      color:'#C9A96E',fontSize:'8px',fontWeight:'900',
+                      padding:'6px 12px',borderRadius:'20px',letterSpacing:'2px',
+                    }}>
+                      🎬 CINEMATIC REEL
+                    </div>
+
+                    {/* Step dots */}
+                    <div style={{
+                      position:'absolute',bottom:'20px',left:'50%',transform:'translateX(-50%)',
+                      display:'flex',gap:'6px',zIndex:5,
+                    }}>
+                      {images.map((_,i) => (
+                        <button key={i}
+                          onClick={e=>{e.stopPropagation();setActiveImg(i);setCinemaProgress(0);}}
+                          style={{
+                            width: activeImg===i ? '24px' : '8px',
+                            height:'8px',borderRadius:'10px',border:'none',
+                            background: activeImg===i ? '#C9A96E' : 'rgba(255,255,255,0.3)',
+                            cursor:'pointer',transition:'all 0.3s ease',padding:0,
+                            boxShadow: activeImg===i ? '0 0 10px rgba(201,169,110,0.6)' : 'none',
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Progress bar */}
+                    <div style={{
+                      position:'absolute',bottom:0,left:0,right:0,height:'3px',
+                      background:'rgba(255,255,255,0.1)',zIndex:5,
+                    }}>
+                      <div style={{
+                        height:'100%',
+                        background:'linear-gradient(90deg,#C9A96E,#e8c98a)',
+                        width:`${cinemaProgress}%`,
+                        transition:'width 0.04s linear',
+                        boxShadow:'0 0 8px rgba(201,169,110,0.8)',
+                      }}/>
+                    </div>
+                  </>)}
+
+                  {/* Shared Badges (all modes) */}
+                  {viewMode !== 'spotlight' && (
+                    <div style={{position:'absolute',top:'16px',left:'16px',display:'flex',flexDirection:'column',gap:'6px',zIndex:3,pointerEvents:'none'}}>
+                      {discount > 0 && (
+                        <span style={{background:'#C9A96E',color:'#000',fontSize:'9px',fontWeight:'900',padding:'4px 10px',letterSpacing:'1px',boxShadow:'0 4px 12px rgba(201,169,110,0.3)',borderRadius:'4px'}}>
+                          -{discount}% OFF
+                        </span>
+                      )}
+                      <span style={{background:'rgba(255,255,255,0.12)',backdropFilter:'blur(8px)',color:'white',fontSize:'9px',fontWeight:'900',padding:'4px 10px',letterSpacing:'1px',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'4px'}}>
+                        {p.tag || 'LUXURY EDIT'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Hotspot pulse animation */}
+                <style>{`
+                  @keyframes hotspot-pulse {
+                    0%,100% { transform: scale(1); opacity: 0.8; }
+                    50% { transform: scale(1.3); opacity: 0.2; }
+                  }
+                `}</style>
               </div>
 
-              <p style={{textAlign:'center',fontSize:'9px',color:'rgba(255,255,255,0.35)',marginTop:'10px',letterSpacing:'2px',fontWeight:'700',textTransform:'uppercase'}}>
-                {spinMode ? '360° ROTATE ACTIVE · DRAG OR TOGGLE AUTO' : 'CLICK FOR FULLSCREEN LIGHTBOX · HOVER TO ZOOM'}
+              {/* Hint text below */}
+              <p style={{textAlign:'center',fontSize:'9px',color:'rgba(255,255,255,0.3)',marginTop:'12px',letterSpacing:'2px',fontWeight:'700',textTransform:'uppercase'}}>
+                {viewMode === 'gallery'
+                  ? '3D DEPTH TILT ACTIVE · HOVER TO ZOOM · CLICK FOR FULLSCREEN'
+                  : viewMode === 'spotlight'
+                  ? 'INTERACTIVE CRAFTSMANSHIP DETAILS · TAP HOTSPOTS'
+                  : '🎬 CINEMATIC SHOWCASE · AUTO-ADVANCING REEL'}
               </p>
             </div>
           </div>

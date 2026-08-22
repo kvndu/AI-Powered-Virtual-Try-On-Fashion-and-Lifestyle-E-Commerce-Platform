@@ -55,8 +55,6 @@ export default function Navbar() {
     { to: '/', label: 'HOME' },
     { to: '/products?category=women', label: 'WOMEN' },
     { to: '/saree', label: 'SAREE' },
-    { to: '/products?category=beauty', label: 'BEAUTY' },
-    { to: '/products?category=accessories', label: 'ACCESSORIES' },
     { to: '/gift-cards', label: 'GIFT CARDS' },
     { to: '/offers', label: 'OFFERS' },
     { to: '/admin', label: 'ADMIN' },

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { Toaster } from 'react-hot-toast';
@@ -11,10 +11,8 @@ import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import WomenPage from './pages/WomenPage';
 import ProductDetailPage from './pages/ProductDetailPage';
-import AccessoriesPage from './pages/AccessoriesPage';
 import GiftCardPage from './pages/GiftCardPage';
 import OffersPage from './pages/OfferPage';
-import BeautyPage from './pages/BeautyPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import ProfilePage from './pages/ProfilePage';
@@ -22,22 +20,6 @@ import AdminDasboardPage from './pages/AdminDasboardPage';
 import CheckoutPage from './pages/CheckoutPage';
 import SareePage from './pages/SareePage';
 
-
-// 💡 DYNAMIC ROUTER CONTROLLER:
-
-function ProductRouteController() {
-  const [searchParams] = useSearchParams();
-  const category = searchParams.get('category');
-
-  if (category === 'accessories') {
-    return <AccessoriesPage />;
-  }
-  if (category === 'beauty') {
-    return <BeautyPage />;
-  }
-
-  return <WomenPage />;
-}
 
 function AppLayout() {
   const location = useLocation();
@@ -63,19 +45,17 @@ function AppLayout() {
           {/* 1. HOME */}
           <Route path="/" element={<HomePage />} />
 
-          {/* 2. DYNAMIC PRODUCTS LINK HANDLING (Women/Men separation fix) */}
-          <Route path="/products" element={<ProductRouteController />} />
+          {/* 2. PRODUCTS */}
+          <Route path="/products" element={<WomenPage />} />
 
-          {/* Direct paths support */}
+          {/* Direct paths */}
           <Route path="/women" element={<WomenPage />} />
-          <Route path="/beauty" element={<BeautyPage />} />
           <Route path="/saree" element={<SareePage />} />
 
           {/* Product detail page */}
           <Route path="/product/:id" element={<ProductDetailPage />} />
 
           {/* 3. OTHER SECTIONS */}
-          <Route path="/accessories" element={<AccessoriesPage />} />
           <Route path="/gift-cards" element={<GiftCardPage />} />
           <Route path="/offers" element={<OffersPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -83,7 +63,9 @@ function AppLayout() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
 
-          {/* Catch-all fallback */}
+          {/* Catch-all: redirect old beauty/accessories paths to home */}
+          <Route path="/beauty" element={<Navigate to="/" replace />} />
+          <Route path="/accessories" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
